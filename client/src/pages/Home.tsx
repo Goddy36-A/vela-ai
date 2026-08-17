@@ -7,7 +7,7 @@ import { Input } from "@/components/ui/input";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { ScrollArea } from "@/components/ui/scroll-area";
-import { Loader2, Send, Terminal, Settings, Plus, History, LogOut, Cpu, ShieldCheck, Activity, Layers, CheckCircle2 } from "lucide-react";
+import { Loader2, Send, Terminal, Settings, Plus, History, LogOut, Cpu, ShieldCheck, Activity, Layers, Globe } from "lucide-react";
 import { Streamdown } from "streamdown";
 
 export default function Home() {
@@ -51,13 +51,13 @@ export default function Home() {
           <div className="space-y-2">
             <h1 className="text-2xl font-bold tracking-tight uppercase font-mono-tech">Open Agent Assistant</h1>
             <p className="text-xs text-muted-foreground font-mono-tech">
-              Autonomous multi-agent orchestration console inspired by technical blueprints and algebraic precision.
+              Autonomous multi-agent orchestration console with integrated Playwright browser automation.
             </p>
           </div>
           <div className="p-4 bg-muted/60 rounded border border-border text-xs text-left space-y-1 font-mono-tech">
             <div className="text-cyan-600 font-semibold">// SYSTEM SECURITY GATEWAY</div>
             <div>• Manus OAuth 2.0 Secure Handshake</div>
-            <div>• Isolated Per-User Task Scoping</div>
+            <div>• Playwright Headless Browser Sandbox</div>
           </div>
           <Button 
             className="w-full bg-cyan-600 hover:bg-cyan-500 text-slate-950 font-bold font-mono-tech tracking-wider uppercase py-6 shadow-lg shadow-cyan-500/20"
@@ -88,11 +88,11 @@ export default function Home() {
         <div className="space-y-6">
           <div className="flex items-center space-x-3 px-2 py-3 border-b border-cyan-500/20">
             <div className="p-2 bg-cyan-500/10 rounded border border-cyan-500/30 text-cyan-600">
-              <Cpu className="w-5 h-5" />
+              <Globe className="w-5 h-5" />
             </div>
             <div>
               <h2 className="font-bold text-sm tracking-wide text-foreground uppercase">Agent Console</h2>
-              <p className="text-[10px] text-cyan-600 font-semibold">// SECURE MULTI-AGENT</p>
+              <p className="text-[10px] text-cyan-600 font-semibold">// PLAYWRIGHT + MULTI-AGENT</p>
             </div>
           </div>
 
@@ -119,7 +119,7 @@ export default function Home() {
               onClick={() => setActiveSection("settings")}
             >
               <Settings className="w-4 h-4 text-cyan-600" />
-              <span>Settings & Telemetry</span>
+              <span>Settings & Browser Specs</span>
             </Button>
           </nav>
 
@@ -171,26 +171,26 @@ export default function Home() {
         {activeSection === "settings" ? (
           <div className="flex-1 p-8 overflow-y-auto space-y-6">
             <div className="border-b border-cyan-500/25 pb-4">
-              <h1 className="text-xl font-bold uppercase tracking-wider text-foreground">Console Settings & Telemetry</h1>
-              <p className="text-xs text-muted-foreground">Inspect active model configurations, system status, and security scopes.</p>
+              <h1 className="text-xl font-bold uppercase tracking-wider text-foreground">Console Settings & Browser Specs</h1>
+              <p className="text-xs text-muted-foreground">Inspect active model configurations, Playwright browser engine status, and security scopes.</p>
             </div>
 
             <div className="grid grid-cols-1 md:grid-cols-2 gap-6 max-w-4xl">
               <Card className="border-cyan-500/30 bg-card/70 backdrop-blur">
                 <CardHeader>
                   <CardTitle className="text-sm uppercase tracking-wider flex items-center space-x-2">
-                    <Cpu className="w-4 h-4 text-cyan-600" />
-                    <span>LLM Engine & Reasoning</span>
+                    <Globe className="w-4 h-4 text-cyan-600" />
+                    <span>Playwright Automation Engine</span>
                   </CardTitle>
                 </CardHeader>
                 <CardContent className="space-y-4 text-xs text-muted-foreground">
                   <div>
-                    <label className="font-bold text-foreground block mb-1">Active Model Engine</label>
-                    <Input disabled value="Built-in Forge LLM (High Precision)" className="font-mono-tech text-xs bg-muted" />
+                    <label className="font-bold text-foreground block mb-1">Browser Runtime</label>
+                    <Input disabled value="Headless Chromium (Playwright)" className="font-mono-tech text-xs bg-muted" />
                   </div>
                   <div>
-                    <label className="font-bold text-foreground block mb-1">Execution Mode</label>
-                    <Input disabled value="Multi-Step Autonomous ReAct Loop" className="font-mono-tech text-xs bg-muted" />
+                    <label className="font-bold text-foreground block mb-1">Navigation Timeout</label>
+                    <Input disabled value="15,000ms (DOM Content Loaded)" className="font-mono-tech text-xs bg-muted" />
                   </div>
                 </CardContent>
               </Card>
@@ -257,7 +257,7 @@ export default function Home() {
                   <div className="border-b border-cyan-500/25 p-4 bg-muted/20">
                     <div className="text-[11px] uppercase font-bold text-cyan-600 tracking-wider mb-2 flex items-center space-x-2">
                       <Layers className="w-3.5 h-3.5" />
-                      <span>Execution Planner & Subtasks Progress</span>
+                      <span>Playwright Planner & Subtasks Progress</span>
                     </div>
                     <div className="grid grid-cols-1 sm:grid-cols-3 gap-2">
                       {subtasks.map((sub, idx) => (
@@ -280,11 +280,11 @@ export default function Home() {
                   {messages.length === 0 ? (
                     <div className="h-full flex flex-col items-center justify-center text-center space-y-4 py-24 text-muted-foreground">
                       <div className="p-4 bg-cyan-500/10 rounded-full border border-cyan-500/30 text-cyan-600">
-                        <Activity className="w-10 h-10 animate-pulse" />
+                        <Globe className="w-10 h-10 animate-pulse" />
                       </div>
-                      <div className="text-sm font-bold uppercase tracking-wider text-foreground">Submit a natural language task below</div>
+                      <div className="text-sm font-bold uppercase tracking-wider text-foreground">Submit a web navigation or research task below</div>
                       <p className="text-xs max-w-md">
-                        The autonomous agent will plan multi-step workflows, execute tools, review outputs, and synthesize professional research reports with algebraic precision.
+                        The autonomous agent will plan multi-step workflows, navigate live webpages with Playwright, and synthesize professional research reports.
                       </p>
                     </div>
                   ) : (
@@ -321,7 +321,7 @@ export default function Home() {
                     <Input
                       value={promptInput}
                       onChange={(e) => setPromptInput(e.target.value)}
-                      placeholder="Enter a complex task for the autonomous agent (e.g., 'Analyze the macroeconomic impact of AI in 2026')..."
+                      placeholder="Enter a task (e.g., 'Browse https://github.com and summarize trending repositories')..."
                       className="font-mono-tech text-xs bg-background border-cyan-500/35 flex-1 py-6 shadow-xs"
                       disabled={createTaskMutation.isPending}
                     />
@@ -345,7 +345,7 @@ export default function Home() {
                 <div className="p-3 border-b border-cyan-500/25 bg-card/80 flex items-center justify-between">
                   <div className="text-xs uppercase font-bold tracking-wider flex items-center space-x-2 text-cyan-700 dark:text-cyan-300">
                     <Terminal className="w-4 h-4 text-cyan-600" />
-                    <span>Tool Telemetry & Logs</span>
+                    <span>Playwright Browser Telemetry</span>
                   </div>
                   <Badge variant="outline" className="text-[10px] bg-cyan-500/10 text-cyan-600 border-cyan-500/30">Live Stream</Badge>
                 </div>
@@ -354,7 +354,7 @@ export default function Home() {
                   {toolLogs.length === 0 ? (
                     <div className="text-muted-foreground text-center py-16 space-y-2">
                       <Terminal className="w-8 h-8 mx-auto opacity-40" />
-                      <div>No tool telemetry captured yet.</div>
+                      <div>No browser telemetry captured yet.</div>
                     </div>
                   ) : (
                     toolLogs.map((log) => (
