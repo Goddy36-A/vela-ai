@@ -120,7 +120,7 @@ export default function Home() {
             <Sparkles className="w-6 h-6" />
           </div>
           <div className="space-y-2">
-            <h1 className="text-xl font-bold tracking-tight">Open Agent Assistant (2050 AI)</h1>
+            <h1 className="text-xl font-bold tracking-tight">Vela AI (2050 Autonomous Engine)</h1>
             <p className="text-xs text-muted-foreground">
               Sign in with Manus OAuth to access autonomous task planning, multi-language code generation, Playwright browser telemetry, scheduled automation, and long-term memory.
             </p>
@@ -319,7 +319,7 @@ export default function Home() {
               </Button>
             )}
             <div className="flex items-center gap-1.5 text-sm font-semibold text-foreground px-3 py-1.5 rounded-xl hover:bg-accent/50 cursor-pointer transition">
-              <span className="truncate max-w-[150px] sm:max-w-none">Open Agent Assistant</span>
+              <span className="truncate max-w-[150px] sm:max-w-none">Vela AI Platform</span>
               <Badge variant="secondary" className="hidden sm:inline-flex text-[10px] font-normal px-1.5 py-0.5 rounded-md ml-1">2050 Autonomous Engine</Badge>
               <ChevronDown className="w-3.5 h-3.5 text-muted-foreground ml-0.5" />
             </div>
@@ -694,7 +694,7 @@ export default function Home() {
                         handleCreateTask(e);
                       }
                     }}
-                    placeholder="Message 2050 Open Agent Assistant (Code generation, Playwright, GitHub, Cron)..."
+                    placeholder="Message Vela AI (Code generation, Playwright, GitHub, Cron)..."
                     className="w-full bg-transparent px-4 py-3.5 pr-14 text-base md:text-sm focus:outline-hidden resize-none max-h-36 min-h-[52px] leading-6"
                     rows={1}
                     disabled={createTaskMutation.isPending}
@@ -715,7 +715,7 @@ export default function Home() {
                   </div>
                 </div>
                 <div className="text-[11px] text-center text-muted-foreground mt-2">
-                  Open Agent Assistant 2050. Multi-language code gen, GitHub Copilot collaboration, and automated cron active.
+                  Vela AI 2050. Multi-language code gen, GitHub Copilot collaboration, and automated cron active.
                 </div>
               </form>
             </div>
