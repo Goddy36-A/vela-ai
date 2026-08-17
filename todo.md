@@ -13,3 +13,7 @@
 - [x] Add chat management controls (rename, clear history, delete chat session)
 - [x] Securely request GitHub PAT and validate via Vitest
 - [x] Save checkpoint and verify deployment readiness
+
+- [ ] Create public GitHub repository Goddy36-A/vela-ai via GitHub API / gh CLI
+- [ ] Configure git remote with authenticated GITHUB_PAT
+- [ ] Push local project branch to origin/main and verify success
