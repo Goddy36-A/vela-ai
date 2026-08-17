@@ -250,7 +250,7 @@ export default function Home() {
             {/* Model Selector dropdown style */}
             <div className="flex items-center gap-1.5 text-sm font-semibold text-foreground px-3 py-1.5 rounded-xl hover:bg-accent/50 cursor-pointer transition">
               <span className="truncate max-w-[150px] sm:max-w-none">Open Agent Assistant</span>
-              <Badge variant="secondary" className="hidden sm:inline-flex text-[10px] font-normal px-1.5 py-0.5 rounded-md ml-1">GPT-4o + Playwright</Badge>
+              <Badge variant="secondary" className="hidden sm:inline-flex text-[10px] font-normal px-1.5 py-0.5 rounded-md ml-1">GPT-4o + GitHub Copilot</Badge>
               <ChevronDown className="w-3.5 h-3.5 text-muted-foreground ml-0.5" />
             </div>
           </div>
@@ -358,20 +358,20 @@ export default function Home() {
                   </div>
                   <h2 className="text-xl font-semibold tracking-tight text-foreground">What can I help with today?</h2>
                   <p className="text-xs text-muted-foreground">
-                    Ask me to research complex topics, browse live webpages with Playwright, or execute multi-step programming tasks.
+                    Ask me to write multi-language code (Python, TypeScript, Rust, Go, C++), review GitHub PRs, or browse repositories.
                   </p>
                   <div className="grid grid-cols-1 sm:grid-cols-2 gap-2.5 w-full pt-4">
                     <button
-                      onClick={() => setPromptInput("Browse https://github.com and summarize trending repositories")}
+                      onClick={() => setPromptInput("Generate a high-performance async REST server in Rust and Python with automated tests")}
                       className="p-3 rounded-xl border border-border bg-card hover:bg-accent text-left text-xs font-medium transition"
                     >
-                      Browse GitHub trending & summarize →
+                      Generate Rust & Python REST servers →
                     </button>
                     <button
-                      onClick={() => setPromptInput("Research quantum computing breakthroughs in 2026")}
+                      onClick={() => setPromptInput("Collaborate on Goddy36-A/vela-ai: review structure and add a TypeScript utility")}
                       className="p-3 rounded-xl border border-border bg-card hover:bg-accent text-left text-xs font-medium transition"
                     >
-                      Research quantum computing breakthroughs →
+                      Collaborate on GitHub repository vela-ai →
                     </button>
                   </div>
                 </div>

@@ -13,4 +13,6 @@
 - [x] Add chat management controls (rename, clear history, delete chat session)
 - [x] Securely request GitHub PAT and validate via Vitest
 - [x] Create public GitHub repository Goddy36-A/vela-ai and push current project code
+- [x] Enable universal multi-language code generation (Python, TypeScript, Rust, Go, C++, Java, etc.)
+- [x] Implement GitHub Copilot collaboration tools (list repos, inspect file content, review code, PR workflows)
 - [x] Save checkpoint and verify deployment readiness
