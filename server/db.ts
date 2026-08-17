@@ -1,11 +1,10 @@
-import { eq } from "drizzle-orm";
+import { eq, desc } from "drizzle-orm";
 import { drizzle } from "drizzle-orm/mysql2";
-import { InsertUser, users } from "../drizzle/schema";
+import { InsertUser, users, tasks, subtasks, toolLogs, messages, Task, Subtask, ToolLog, Message, InsertTask, InsertSubtask, InsertToolLog, InsertMessage } from "../drizzle/schema";
 import { ENV } from './_core/env';
 
 let _db: ReturnType<typeof drizzle> | null = null;
 
-// Lazily create the drizzle instance so local tooling can run without a DB.
 export async function getDb() {
   if (!_db && process.env.DATABASE_URL) {
     try {
@@ -79,14 +78,92 @@ export async function upsertUser(user: InsertUser): Promise<void> {
 
 export async function getUserByOpenId(openId: string) {
   const db = await getDb();
-  if (!db) {
-    console.warn("[Database] Cannot get user: database not available");
-    return undefined;
-  }
-
+  if (!db) return undefined;
   const result = await db.select().from(users).where(eq(users.openId, openId)).limit(1);
-
   return result.length > 0 ? result[0] : undefined;
 }
 
-// TODO: add feature queries here as your schema grows.
+// Task Helpers
+export async function createTask(data: InsertTask): Promise<number> {
+  const db = await getDb();
+  if (!db) throw new Error("Database not available");
+  const [res] = await db.insert(tasks).values(data);
+  return res.insertId;
+}
+
+export async function getTaskById(id: number): Promise<Task | undefined> {
+  const db = await getDb();
+  if (!db) return undefined;
+  const [task] = await db.select().from(tasks).where(eq(tasks.id, id)).limit(1);
+  return task;
+}
+
+export async function getTasksByUserId(userId: number): Promise<Task[]> {
+  const db = await getDb();
+  if (!db) return [];
+  return await db.select().from(tasks).where(eq(tasks.userId, userId)).orderBy(desc(tasks.createdAt));
+}
+
+export async function updateTaskPhase(id: number, phase: "planning" | "executing" | "reviewing" | "done", summary?: string) {
+  const db = await getDb();
+  if (!db) return;
+  const updateData: Partial<Task> = { phase, updatedAt: new Date() };
+  if (summary !== undefined) updateData.summary = summary;
+  if (phase === 'done') updateData.status = 'completed';
+  await db.update(tasks).set(updateData).where(eq(tasks.id, id));
+}
+
+// Subtask Helpers
+export async function createSubtasks(items: InsertSubtask[]) {
+  const db = await getDb();
+  if (!db || items.length === 0) return;
+  await db.insert(subtasks).values(items);
+}
+
+export async function getSubtasksByTaskId(taskId: number): Promise<Subtask[]> {
+  const db = await getDb();
+  if (!db) return [];
+  return await db.select().from(subtasks).where(eq(subtasks.taskId, taskId)).orderBy(subtasks.orderIndex);
+}
+
+export async function updateSubtaskStatus(id: number, status: "pending" | "in_progress" | "completed" | "failed", result?: string) {
+  const db = await getDb();
+  if (!db) return;
+  const data: Partial<Subtask> = { status };
+  if (result !== undefined) data.result = result;
+  await db.update(subtasks).set(data).where(eq(subtasks.id, id));
+}
+
+// Tool Log Helpers
+export async function createToolLog(data: InsertToolLog): Promise<number> {
+  const db = await getDb();
+  if (!db) throw new Error("Database not available");
+  const [res] = await db.insert(toolLogs).values(data);
+  return res.insertId;
+}
+
+export async function updateToolLog(id: number, outputResult: string, status: "success" | "error") {
+  const db = await getDb();
+  if (!db) return;
+  await db.update(toolLogs).set({ outputResult, status }).where(eq(toolLogs.id, id));
+}
+
+export async function getToolLogsByTaskId(taskId: number): Promise<ToolLog[]> {
+  const db = await getDb();
+  if (!db) return [];
+  return await db.select().from(toolLogs).where(eq(toolLogs.taskId, taskId)).orderBy(toolLogs.createdAt);
+}
+
+// Message Helpers
+export async function createMessage(data: InsertMessage): Promise<number> {
+  const db = await getDb();
+  if (!db) throw new Error("Database not available");
+  const [res] = await db.insert(messages).values(data);
+  return res.insertId;
+}
+
+export async function getMessagesByTaskId(taskId: number): Promise<Message[]> {
+  const db = await getDb();
+  if (!db) return [];
+  return await db.select().from(messages).where(eq(messages.taskId, taskId)).orderBy(messages.createdAt);
+}

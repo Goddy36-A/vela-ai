@@ -1,10 +1,12 @@
 import { COOKIE_NAME } from "@shared/const";
 import { getSessionCookieOptions } from "./_core/cookies";
 import { systemRouter } from "./_core/systemRouter";
-import { publicProcedure, router } from "./_core/trpc";
+import { publicProcedure, protectedProcedure, router } from "./_core/trpc";
+import { z } from "zod";
+import * as db from "./db";
+import { runAgentTask } from "./agent";
 
 export const appRouter = router({
-    // if you need to use socket.io, read and register route in server/_core/index.ts, all api should start with '/api/' so that the gateway can route correctly
   system: systemRouter,
   auth: router({
     me: publicProcedure.query(opts => opts.ctx.user),
@@ -17,12 +19,57 @@ export const appRouter = router({
     }),
   }),
 
-  // TODO: add feature routers here, e.g.
-  // todo: router({
-  //   list: protectedProcedure.query(({ ctx }) =>
-  //     db.getUserTodos(ctx.user.id)
-  //   ),
-  // }),
+  agent: router({
+    createTask: protectedProcedure
+      .input(z.object({ prompt: z.string().min(1, "Prompt cannot be empty") }))
+      .mutation(async ({ ctx, input }) => {
+        const title = input.prompt.length > 50 ? input.prompt.slice(0, 47) + "..." : input.prompt;
+        const taskId = await db.createTask({
+          userId: ctx.user.id,
+          title,
+          prompt: input.prompt,
+          phase: "planning",
+          status: "active"
+        });
+
+        // Add initial user message
+        await db.createMessage({
+          taskId,
+          role: "user",
+          content: input.prompt
+        });
+
+        // Trigger agent background execution asynchronously
+        runAgentTask(taskId, input.prompt).catch(err => {
+          console.error("Background agent execution error:", err);
+        });
+
+        return { taskId };
+      }),
+
+    listTasks: protectedProcedure.query(async ({ ctx }) => {
+      return await db.getTasksByUserId(ctx.user.id);
+    }),
+
+    getTaskDetails: protectedProcedure
+      .input(z.object({ taskId: z.number() }))
+      .query(async ({ ctx, input }) => {
+        const task = await db.getTaskById(input.taskId);
+        if (!task || task.userId !== ctx.user.id) {
+          throw new Error("Task not found or unauthorized");
+        }
+        const subtasks = await db.getSubtasksByTaskId(input.taskId);
+        const toolLogs = await db.getToolLogsByTaskId(input.taskId);
+        const messages = await db.getMessagesByTaskId(input.taskId);
+
+        return {
+          task,
+          subtasks,
+          toolLogs,
+          messages
+        };
+      })
+  })
 });
 
 export type AppRouter = typeof appRouter;
