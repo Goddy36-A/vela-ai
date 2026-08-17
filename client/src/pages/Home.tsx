@@ -1,34 +1,43 @@
-import { useState, useEffect } from "react";
 import { useAuth } from "@/_core/hooks/useAuth";
-import { startLogin } from "@/const";
-import { trpc } from "@/lib/trpc";
 import { Button } from "@/components/ui/button";
-import { Input } from "@/components/ui/input";
-import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { ScrollArea } from "@/components/ui/scroll-area";
-import { Loader2, Send, Plus, Settings, LogOut, Cpu, Globe, PanelLeftClose, PanelLeft, Sparkles, ChevronDown, ChevronUp, MoreHorizontal, Pencil, Trash2, RotateCcw, Terminal } from "lucide-react";
+import { Loader2, Send, Plus, Settings, LogOut, Cpu, Globe, PanelLeftClose, PanelLeft, Sparkles, ChevronDown, ChevronUp, MoreHorizontal, Pencil, Trash2, RotateCcw, Terminal, Zap, Database, ShieldCheck, CheckCircle2 } from "lucide-react";
 import { AssistantMessage } from "@/components/AssistantMessage";
+import { useState, useEffect, useRef } from "react";
+import { trpc } from "@/lib/trpc";
 
 export default function Home() {
   const { user, isAuthenticated, logout } = useAuth();
   const [sidebarOpen, setSidebarOpen] = useState(() => typeof window === "undefined" ? true : window.innerWidth >= 768);
-  const [viewMode, setViewMode] = useState<"chat" | "settings">("chat");
+  const [viewMode, setViewMode] = useState<"chat" | "automations" | "memories" | "settings">("chat");
   const [promptInput, setPromptInput] = useState("");
   const [selectedTaskId, setSelectedTaskId] = useState<number | null>(null);
   const [logsOpen, setLogsOpen] = useState(false);
   const [managementTaskId, setManagementTaskId] = useState<number | null>(null);
 
+  // Automation / Memory form states
+  const [autoName, setAutoName] = useState("");
+  const [autoPrompt, setAutoPrompt] = useState("");
+  const [memCategory, setMemCategory] = useState("preference");
+  const [memKey, setMemKey] = useState("");
+  const [memValue, setMemValue] = useState("");
+
+  const chatScrollRef = useRef<HTMLDivElement>(null);
+
   const utils = trpc.useUtils();
   const tasksQuery = trpc.agent.listTasks.useQuery(undefined, {
     enabled: isAuthenticated,
-    refetchInterval: 2500
+    refetchInterval: 2000
   });
 
   const taskDetailsQuery = trpc.agent.getTaskDetails.useQuery(
     { taskId: selectedTaskId! },
     { enabled: !!selectedTaskId && isAuthenticated, refetchInterval: 1500 }
   );
+
+  const automationsQuery = trpc.agent.listAutomations.useQuery(undefined, { enabled: isAuthenticated });
+  const memoriesQuery = trpc.agent.listMemories.useQuery(undefined, { enabled: isAuthenticated });
 
   const createTaskMutation = trpc.agent.createTask.useMutation({
     onSuccess: (data) => {
@@ -63,29 +72,60 @@ export default function Home() {
     }
   });
 
+  const createAutomationMutation = trpc.agent.createAutomation.useMutation({
+    onSuccess: () => {
+      setAutoName("");
+      setAutoPrompt("");
+      utils.agent.listAutomations.invalidate();
+    }
+  });
+
+  const deleteAutomationMutation = trpc.agent.deleteAutomation.useMutation({
+    onSuccess: () => {
+      utils.agent.listAutomations.invalidate();
+    }
+  });
+
+  const setMemoryMutation = trpc.agent.setMemory.useMutation({
+    onSuccess: () => {
+      setMemKey("");
+      setMemValue("");
+      utils.agent.listMemories.invalidate();
+    }
+  });
+
+  const resolveApprovalMutation = trpc.agent.resolveApproval.useMutation({
+    onSuccess: () => {
+      if (selectedTaskId) utils.agent.getTaskDetails.invalidate({ taskId: selectedTaskId });
+    }
+  });
+
   useEffect(() => {
     if (tasksQuery.data && tasksQuery.data.length > 0 && !selectedTaskId) {
       setSelectedTaskId(tasksQuery.data[0].id);
     }
   }, [tasksQuery.data, selectedTaskId]);
 
+  useEffect(() => {
+    if (chatScrollRef.current) {
+      chatScrollRef.current.scrollTop = chatScrollRef.current.scrollHeight;
+    }
+  }, [taskDetailsQuery.data?.messages]);
+
   if (!isAuthenticated) {
     return (
-      <div className="min-h-screen bg-background flex flex-col items-center justify-center p-6">
-        <div className="max-w-md w-full bg-card border border-border p-8 rounded-2xl shadow-xl text-center space-y-6">
-          <div className="inline-flex p-3 bg-secondary rounded-full text-foreground">
-            <Sparkles className="w-8 h-8" />
+      <div className="min-h-screen flex items-center justify-center bg-background text-foreground p-4">
+        <div className="max-w-md w-full rounded-2xl border border-border bg-card p-8 shadow-xl text-center space-y-6">
+          <div className="mx-auto w-12 h-12 rounded-2xl bg-primary/10 text-primary flex items-center justify-center">
+            <Sparkles className="w-6 h-6" />
           </div>
           <div className="space-y-2">
-            <h1 className="text-xl font-semibold tracking-tight text-foreground">Open Agent Assistant</h1>
-            <p className="text-sm text-muted-foreground">
-              Sign in with Manus OAuth to access autonomous chat sessions, multi-step agent planning, and Playwright browser telemetry.
+            <h1 className="text-xl font-bold tracking-tight">Open Agent Assistant (2050 AI)</h1>
+            <p className="text-xs text-muted-foreground">
+              Sign in with Manus OAuth to access autonomous task planning, multi-language code generation, Playwright browser telemetry, scheduled automation, and long-term memory.
             </p>
           </div>
-          <Button 
-            className="w-full bg-primary hover:bg-primary/90 text-primary-foreground font-medium py-6 rounded-xl shadow-sm"
-            onClick={() => startLogin()}
-          >
+          <Button onClick={() => { window.location.href = "/api/oauth/callback"; }} className="w-full h-11 rounded-xl font-medium shadow-sm">
             Continue with Manus OAuth
           </Button>
         </div>
@@ -97,6 +137,7 @@ export default function Home() {
   const subtasks = taskDetailsQuery.data?.subtasks || [];
   const toolLogs = taskDetailsQuery.data?.toolLogs || [];
   const messages = taskDetailsQuery.data?.messages || [];
+  const approvals = taskDetailsQuery.data?.approvals || [];
 
   const handleCreateTask = (e: React.FormEvent) => {
     e.preventDefault();
@@ -123,255 +164,389 @@ export default function Home() {
 
   return (
     <div className="min-h-screen flex h-screen bg-background text-foreground overflow-hidden">
-      {/* ChatGPT-style collapsible sidebar */}
+      {/* Mobile Sidebar Overlay Scrim */}
+      {sidebarOpen && (
+        <div
+          className="fixed inset-0 z-40 bg-background/80 backdrop-blur-xs md:hidden"
+          onClick={() => setSidebarOpen(false)}
+        />
+      )}
+
+      {/* ChatGPT-style Collapsible Sidebar */}
       <aside
-        className={`${sidebarOpen ? "translate-x-0 md:translate-x-0" : "-translate-x-full md:-ml-64 md:translate-x-0"} fixed inset-y-0 left-0 z-40 w-72 md:relative md:inset-auto md:z-20 md:w-64 transition-transform md:transition-[transform,margin] duration-300 ease-out bg-muted/50 border-r border-border flex flex-col justify-between flex-shrink-0`}
+        className={`fixed md:relative z-50 h-full w-72 flex-shrink-0 bg-secondary/50 border-r border-border flex flex-col transition-transform duration-200 ease-out ${
+          sidebarOpen ? "translate-x-0" : "-translate-x-full md:hidden"
+        }`}
       >
-        <div className="p-3 flex flex-col h-full space-y-3 overflow-hidden">
-          {/* New Chat & Close Sidebar */}
-          <div className="flex items-center justify-between gap-2">
-            <Button
-              variant="outline"
-              className="flex-1 justify-start gap-2 bg-card hover:bg-accent border-border rounded-xl text-xs font-medium py-5 shadow-xs"
-              onClick={() => {
-                setSelectedTaskId(null);
-                setViewMode("chat");
-              }}
+        <div className="p-3 border-b border-border flex items-center justify-between gap-2">
+          <Button
+            onClick={() => {
+              setSelectedTaskId(null);
+              setViewMode("chat");
+              if (window.innerWidth < 768) setSidebarOpen(false);
+            }}
+            variant="outline"
+            className="flex-1 justify-start gap-2 h-10 rounded-xl bg-card border-border hover:bg-accent text-xs font-medium shadow-2xs"
+          >
+            <Plus className="w-4 h-4 text-primary" />
+            <span>New chat</span>
+          </Button>
+          <Button
+            variant="ghost"
+            size="icon"
+            onClick={() => setSidebarOpen(false)}
+            className="h-10 w-10 rounded-xl text-muted-foreground hover:text-foreground"
+            aria-label="Close sidebar"
+          >
+            <PanelLeftClose className="w-4 h-4" />
+          </Button>
+        </div>
+
+        {/* Chat History List */}
+        <div className="flex-1 overflow-y-auto space-y-1 p-2">
+          <div className="text-[11px] font-medium text-muted-foreground px-3 py-1.5 uppercase tracking-wider">Recent chats</div>
+          {tasksQuery.data?.map((t) => (
+            <div
+              key={t.id}
+              className={`relative group flex items-center gap-1 rounded-xl transition ${
+                selectedTaskId === t.id && viewMode === "chat"
+                  ? "bg-accent text-foreground font-medium"
+                  : "text-muted-foreground hover:bg-accent/50 hover:text-foreground"
+              }`}
             >
-              <Plus className="w-4 h-4 text-primary" />
-              <span>New chat</span>
-            </Button>
+              <button
+                onClick={() => {
+                  setSelectedTaskId(t.id);
+                  setViewMode("chat");
+                  setManagementTaskId(null);
+                  if (window.innerWidth < 768) setSidebarOpen(false);
+                }}
+                className="min-w-0 flex-1 text-left px-3 py-2.5 rounded-xl text-xs truncate"
+              >
+                <span className="block truncate">{t.title}</span>
+                <span className="block mt-0.5 text-[10px] text-muted-foreground uppercase opacity-70">{t.phase}</span>
+              </button>
+              <Button
+                variant="ghost"
+                size="icon"
+                className="mr-1 h-8 w-8 flex-shrink-0 rounded-lg opacity-60 hover:opacity-100"
+                onClick={() => setManagementTaskId(managementTaskId === t.id ? null : t.id)}
+                aria-label={`Manage ${t.title}`}
+              >
+                <MoreHorizontal className="h-4 w-4" />
+              </Button>
+              {managementTaskId === t.id && (
+                <div className="absolute right-1 top-11 z-50 w-36 rounded-xl border border-border bg-popover p-1 shadow-xl">
+                  <button className="flex w-full items-center gap-2 rounded-lg px-2.5 py-2 text-left text-xs hover:bg-accent" onClick={() => handleRenameTask(t.id, t.title)}>
+                    <Pencil className="h-3.5 w-3.5" /> Rename
+                  </button>
+                  <button className="flex w-full items-center gap-2 rounded-lg px-2.5 py-2 text-left text-xs text-destructive hover:bg-destructive/10" onClick={() => handleDeleteTask(t.id)}>
+                    <Trash2 className="h-3.5 w-3.5" /> Delete chat
+                  </button>
+                </div>
+              )}
+            </div>
+          ))}
+          {tasksQuery.data?.length ? (
+            <button onClick={handleClearHistory} className="mt-3 flex w-full items-center gap-2 rounded-xl px-3 py-2 text-xs text-muted-foreground hover:bg-destructive/10 hover:text-destructive">
+              <RotateCcw className="h-3.5 w-3.5" /> Clear all chat history
+            </button>
+          ) : (
+            <div className="px-3 py-4 text-xs text-muted-foreground">No saved chats yet.</div>
+          )}
+        </div>
+
+        {/* Bottom user profile & 2050 Automation Hub */}
+        <div className="relative pt-2 border-t border-border space-y-1 p-2">
+          <Button
+            variant="ghost"
+            className={`w-full justify-start gap-2 text-xs rounded-xl py-2.5 ${viewMode === "automations" ? "bg-accent text-foreground font-medium" : "text-muted-foreground hover:text-foreground hover:bg-accent"}`}
+            onClick={() => { setViewMode("automations"); if (window.innerWidth < 768) setSidebarOpen(false); }}
+          >
+            <Zap className="h-4 w-4 text-primary" /> 2050 Automations & Cron
+          </Button>
+          <Button
+            variant="ghost"
+            className={`w-full justify-start gap-2 text-xs rounded-xl py-2.5 ${viewMode === "memories" ? "bg-accent text-foreground font-medium" : "text-muted-foreground hover:text-foreground hover:bg-accent"}`}
+            onClick={() => { setViewMode("memories"); if (window.innerWidth < 768) setSidebarOpen(false); }}
+          >
+            <Database className="h-4 w-4 text-primary" /> Long-Term Memory
+          </Button>
+          <Button
+            variant="ghost"
+            className={`w-full justify-start gap-2 text-xs rounded-xl py-2.5 ${viewMode === "settings" ? "bg-accent text-foreground font-medium" : "text-muted-foreground hover:text-foreground hover:bg-accent"}`}
+            onClick={() => { setViewMode("settings"); if (window.innerWidth < 768) setSidebarOpen(false); }}
+          >
+            <Settings className="h-4 w-4" /> Settings & Telemetry
+          </Button>
+          <div className="pt-2 mt-1 border-t border-border flex items-center justify-between px-2 py-2">
+            <div className="min-w-0 flex items-center gap-2 truncate">
+              <div className="w-7 h-7 rounded-full bg-primary text-primary-foreground flex items-center justify-center text-xs font-semibold flex-shrink-0">
+                {user?.name?.[0] || "U"}
+              </div>
+              <div className="min-w-0 truncate text-xs">
+                <p className="font-medium truncate text-foreground">{user?.name || "User"}</p>
+                <p className="text-[10px] text-muted-foreground truncate">{user?.email || "Connected"}</p>
+              </div>
+            </div>
             <Button
               variant="ghost"
               size="icon"
-              className="rounded-xl hover:bg-accent text-muted-foreground h-10 w-10 flex-shrink-0"
-              onClick={() => setSidebarOpen(false)}
-              title="Close sidebar"
+              onClick={() => logout()}
+              className="h-8 w-8 text-muted-foreground hover:text-destructive flex-shrink-0"
+              title="Sign out"
             >
-              <PanelLeftClose className="w-4 h-4" />
+              <LogOut className="h-4 w-4" />
             </Button>
-          </div>
-
-          {/* Chat History List */}
-          <div className="flex-1 overflow-y-auto space-y-1 pr-1">
-            <div className="text-[11px] font-medium text-muted-foreground px-3 py-1.5 uppercase tracking-wider">Recent chats</div>
-            {tasksQuery.data?.map((t) => (
-              <div
-                key={t.id}
-                className={`relative group flex items-center gap-1 rounded-xl transition ${
-                  selectedTaskId === t.id && viewMode === "chat"
-                    ? "bg-accent text-foreground font-medium"
-                    : "text-muted-foreground hover:bg-accent/50 hover:text-foreground"
-                }`}
-              >
-                <button
-                  onClick={() => {
-                    setSelectedTaskId(t.id);
-                    setViewMode("chat");
-                    setManagementTaskId(null);
-                  }}
-                  className="min-w-0 flex-1 text-left px-3 py-2.5 rounded-xl text-xs truncate"
-                >
-                  <span className="block truncate">{t.title}</span>
-                  <span className="block mt-0.5 text-[10px] text-muted-foreground uppercase opacity-70">{t.phase}</span>
-                </button>
-                <Button
-                  variant="ghost"
-                  size="icon"
-                  className="mr-1 h-8 w-8 flex-shrink-0 rounded-lg opacity-60 hover:opacity-100"
-                  onClick={() => setManagementTaskId(managementTaskId === t.id ? null : t.id)}
-                  aria-label={`Manage ${t.title}`}
-                >
-                  <MoreHorizontal className="h-4 w-4" />
-                </Button>
-                {managementTaskId === t.id && (
-                  <div className="absolute right-1 top-11 z-50 w-36 rounded-xl border border-border bg-popover p-1 shadow-xl">
-                    <button className="flex w-full items-center gap-2 rounded-lg px-2.5 py-2 text-left text-xs hover:bg-accent" onClick={() => handleRenameTask(t.id, t.title)}>
-                      <Pencil className="h-3.5 w-3.5" /> Rename
-                    </button>
-                    <button className="flex w-full items-center gap-2 rounded-lg px-2.5 py-2 text-left text-xs text-destructive hover:bg-destructive/10" onClick={() => handleDeleteTask(t.id)}>
-                      <Trash2 className="h-3.5 w-3.5" /> Delete chat
-                    </button>
-                  </div>
-                )}
-              </div>
-            ))}
-            {tasksQuery.data?.length ? (
-              <button onClick={handleClearHistory} className="mt-3 flex w-full items-center gap-2 rounded-xl px-3 py-2 text-xs text-muted-foreground hover:bg-destructive/10 hover:text-destructive">
-                <RotateCcw className="h-3.5 w-3.5" /> Clear all chat history
-              </button>
-            ) : (
-              <div className="px-3 py-4 text-xs text-muted-foreground">No saved chats yet.</div>
-            )}
-          </div>
-
-          {/* Bottom user profile & settings */}
-          <div className="relative pt-2 border-t border-border space-y-1">
-            <Button
-              variant="ghost"
-              className="w-full justify-start gap-2 text-xs rounded-xl py-2.5 text-muted-foreground hover:text-foreground hover:bg-accent"
-              onClick={() => setViewMode("settings")}
-            >
-              <Settings className="w-4 h-4" />
-              <span>Settings & Telemetry</span>
-            </Button>
-            <div className="flex items-center justify-between px-3 py-2 rounded-xl bg-card border border-border">
-              <div className="truncate pr-2">
-                <div className="text-xs font-medium text-foreground truncate">{user?.name || "Operator"}</div>
-                <div className="text-[10px] text-muted-foreground truncate">{user?.email || "Manus User"}</div>
-              </div>
-              <Button variant="ghost" size="icon" onClick={() => logout()} className="h-8 w-8 text-muted-foreground hover:text-destructive rounded-lg flex-shrink-0" title="Sign out">
-                <LogOut className="w-3.5 h-3.5" />
-              </Button>
-            </div>
           </div>
         </div>
       </aside>
 
-      {/* Mobile scrim keeps the conversation context visible while the history drawer is open. */}
-      {sidebarOpen && <button aria-label="Close conversation sidebar" className="fixed inset-0 z-30 bg-black/25 backdrop-blur-[1px] md:hidden" onClick={() => setSidebarOpen(false)} />}
-
-      {/* Main ChatGPT Workspace */}
-      <main className="flex-1 min-w-0 min-h-0 flex flex-col h-full overflow-hidden bg-background relative">
-        {/* Top Header bar */}
-        <header className="h-14 min-h-14 border-b border-border px-3 sm:px-4 flex items-center justify-between gap-2 bg-background/80 backdrop-blur z-10">
+      {/* Main Workspace Area */}
+      <main className="flex-1 flex flex-col min-w-0 bg-background">
+        {/* ChatGPT Top Navigation Bar */}
+        <header className="h-14 border-b border-border flex items-center justify-between px-4 flex-shrink-0 bg-background/95 backdrop-blur-xs z-30">
           <div className="flex items-center gap-3">
             {!sidebarOpen && (
               <Button
                 variant="ghost"
                 size="icon"
-                className="rounded-xl hover:bg-accent text-muted-foreground h-9 w-9"
                 onClick={() => setSidebarOpen(true)}
-                title="Open sidebar"
+                className="h-9 w-9 rounded-xl text-muted-foreground hover:text-foreground"
+                aria-label="Open sidebar"
               >
                 <PanelLeft className="w-4 h-4" />
               </Button>
             )}
-            {/* Model Selector dropdown style */}
             <div className="flex items-center gap-1.5 text-sm font-semibold text-foreground px-3 py-1.5 rounded-xl hover:bg-accent/50 cursor-pointer transition">
               <span className="truncate max-w-[150px] sm:max-w-none">Open Agent Assistant</span>
-              <Badge variant="secondary" className="hidden sm:inline-flex text-[10px] font-normal px-1.5 py-0.5 rounded-md ml-1">GPT-4o + GitHub Copilot</Badge>
+              <Badge variant="secondary" className="hidden sm:inline-flex text-[10px] font-normal px-1.5 py-0.5 rounded-md ml-1">2050 Autonomous Engine</Badge>
               <ChevronDown className="w-3.5 h-3.5 text-muted-foreground ml-0.5" />
             </div>
           </div>
 
-          {/* Agent Phase Badges indicator */}
-          <div className="flex items-center gap-1.5 max-w-[60vw] overflow-x-auto whitespace-nowrap scrollbar-none">
-            <span className="text-xs text-muted-foreground hidden sm:inline">Phase:</span>
-            {(["planning", "executing", "reviewing", "done"] as const).map((p) => {
-              const active = currentTask?.phase === p;
-              return (
-                <Badge
-                  key={p}
-                  variant={active ? "default" : "outline"}
-                  className={`${!active ? "hidden sm:inline-flex" : "inline-flex"} text-[10px] uppercase tracking-wide px-2 py-0.5 rounded-md ${
-                    active 
-                      ? "bg-primary text-primary-foreground font-semibold shadow-xs animate-pulse" 
-                      : "text-muted-foreground border-border bg-transparent"
-                  }`}
-                >
-                  {p}
-                </Badge>
-              );
-            })}
-          </div>
+          {/* Phase Status Indicator */}
+          {viewMode === "chat" && currentTask && (
+            <div className="hidden md:flex items-center gap-2 text-xs font-medium bg-muted/40 border border-border px-3 py-1.5 rounded-full">
+              <span className="text-muted-foreground">Phase:</span>
+              {(["planning", "executing", "reviewing", "done"] as const).map((p) => {
+                const active = currentTask.phase === p;
+                return (
+                  <span
+                    key={p}
+                    className={`uppercase text-[10px] px-2 py-0.5 rounded-md transition ${
+                      active
+                        ? "bg-primary text-primary-foreground font-semibold shadow-2xs"
+                        : "text-muted-foreground opacity-60"
+                    }`}
+                  >
+                    {p}
+                  </span>
+                );
+              })}
+            </div>
+          )}
         </header>
 
-        {viewMode === "settings" ? (
-          <div className="flex-1 p-8 overflow-y-auto max-w-4xl mx-auto w-full space-y-6">
-            <div className="border-b border-border pb-4">
-              <h1 className="text-xl font-semibold text-foreground">Settings & Telemetry</h1>
-              <p className="text-xs text-muted-foreground">Manage your agent assistant preferences, Playwright browser engine, and OAuth security scope.</p>
-            </div>
-
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-              <Card className="border-border bg-card rounded-2xl shadow-xs">
-                <CardHeader>
-                  <CardTitle className="text-sm font-medium flex items-center gap-2">
-                    <Cpu className="w-4 h-4 text-primary" />
-                    <span>Active LLM & Tool Engine</span>
-                  </CardTitle>
-                </CardHeader>
-                <CardContent className="space-y-4 text-xs text-muted-foreground">
-                  <div>
-                    <label className="font-medium text-foreground block mb-1">Model Architecture</label>
-                    <Input disabled value="Built-in Forge LLM with Structured ReAct" className="bg-muted text-xs rounded-xl" />
-                  </div>
-                  <div>
-                    <label className="font-medium text-foreground block mb-1">Browser Automation</label>
-                    <Input disabled value="Playwright Headless Chromium (Active)" className="bg-muted text-xs rounded-xl" />
-                  </div>
-                </CardContent>
-              </Card>
-
-              <Card className="border-border bg-card rounded-2xl shadow-xs">
-                <CardHeader>
-                  <CardTitle className="text-sm font-medium flex items-center gap-2">
-                    <Globe className="w-4 h-4 text-primary" />
-                    <span>Authentication & Security</span>
-                  </CardTitle>
-                </CardHeader>
-                <CardContent className="space-y-4 text-xs text-muted-foreground">
-                  <div>
-                    <label className="font-medium text-foreground block mb-1">Provider</label>
-                    <Input disabled value="Manus OAuth 2.0 Secure Session" className="bg-muted text-xs rounded-xl" />
-                  </div>
-                  <div>
-                    <label className="font-medium text-foreground block mb-1">User OpenID</label>
-                    <Input disabled value={user?.openId || "N/A"} className="bg-muted text-xs rounded-xl" />
-                  </div>
-                </CardContent>
-              </Card>
-            </div>
-          </div>
-        ) : (
-          <div className="flex-1 flex flex-col h-[calc(100vh-3.5rem)] overflow-hidden">
-            {/* Multi-step Planner Timeline / Agent Inspector */}
-            {subtasks.length > 0 && (
-              <div className="border-b border-border bg-muted/30 px-6 py-3 flex-shrink-0">
-                <div className="text-xs font-semibold text-muted-foreground mb-2 flex items-center justify-between">
-                  <span>Autonomous Execution Plan ({subtasks.filter(s => s.status === 'completed').length}/{subtasks.length} completed)</span>
-                  <span className="text-[10px] text-primary">Playwright & ReAct Active</span>
-                </div>
-                <div className="grid grid-cols-1 sm:grid-cols-3 gap-2">
-                  {subtasks.map((sub, idx) => (
-                    <div key={sub.id} className="p-2.5 rounded-xl border border-border bg-card text-xs space-y-1 shadow-2xs">
-                      <div className="flex items-center justify-between">
-                        <span className="font-semibold text-[10px] text-primary">Step {idx + 1}</span>
-                        <Badge variant="outline" className="text-[9px] uppercase px-1.5 py-0">
-                          {sub.status}
-                        </Badge>
-                      </div>
-                      <div className="truncate text-foreground font-medium">{sub.title}</div>
-                    </div>
-                  ))}
+        {/* View Mode Router */}
+        {viewMode === "automations" ? (
+          <ScrollArea className="flex-1 p-6">
+            <div className="max-w-3xl mx-auto space-y-6">
+              <div className="flex items-center justify-between">
+                <div>
+                  <h2 className="text-xl font-bold tracking-tight">2050 Autonomous Automations & Cron</h2>
+                  <p className="text-xs text-muted-foreground mt-1">Schedule background agent jobs, recurring web research, and autonomous repository maintenance.</p>
                 </div>
               </div>
-            )}
-
-            {/* Chat Messages Area (ChatGPT style centered stream) */}
-            <ScrollArea className="flex-1 min-h-0 px-3 py-4 sm:px-4 sm:py-6">
-              {messages.length === 0 ? (
-                <div className="h-full flex flex-col items-center justify-center text-center space-y-4 max-w-lg mx-auto py-24">
-                  <div className="p-4 bg-secondary rounded-2xl text-foreground shadow-sm">
-                    <Sparkles className="w-8 h-8" />
+              <div className="rounded-2xl border border-border bg-card p-6 shadow-xs space-y-4">
+                <h3 className="text-sm font-semibold">Create New Scheduled Automation</h3>
+                <div className="space-y-3">
+                  <div>
+                    <label className="text-xs font-medium text-muted-foreground">Automation Name</label>
+                    <input
+                      type="text"
+                      value={autoName}
+                      onChange={(e) => setAutoName(e.target.value)}
+                      placeholder="e.g. Daily GitHub Security Audit"
+                      className="mt-1 w-full rounded-xl border border-border bg-background px-3 py-2 text-xs focus:outline-hidden"
+                    />
                   </div>
-                  <h2 className="text-xl font-semibold tracking-tight text-foreground">What can I help with today?</h2>
+                  <div>
+                    <label className="text-xs font-medium text-muted-foreground">Agent Task Prompt</label>
+                    <textarea
+                      value={autoPrompt}
+                      onChange={(e) => setAutoPrompt(e.target.value)}
+                      placeholder="Describe what the agent should investigate or execute on schedule..."
+                      className="mt-1 w-full rounded-xl border border-border bg-background px-3 py-2 text-xs focus:outline-hidden resize-none h-20"
+                    />
+                  </div>
+                  <Button
+                    onClick={() => {
+                      if (!autoName || !autoPrompt) return;
+                      createAutomationMutation.mutate({ name: autoName, prompt: autoPrompt });
+                    }}
+                    disabled={createAutomationMutation.isPending || !autoName || !autoPrompt}
+                    className="rounded-xl text-xs font-medium"
+                  >
+                    {createAutomationMutation.isPending ? <Loader2 className="w-4 h-4 animate-spin mr-2" /> : <Zap className="w-4 h-4 mr-2 text-primary" />}
+                    Schedule 2050 Automation
+                  </Button>
+                </div>
+              </div>
+
+              <div className="space-y-3">
+                <h3 className="text-sm font-semibold">Active Automations ({automationsQuery.data?.length || 0})</h3>
+                {automationsQuery.data?.length ? (
+                  automationsQuery.data.map(auto => (
+                    <div key={auto.id} className="flex items-center justify-between p-4 rounded-2xl border border-border bg-card shadow-2xs">
+                      <div>
+                        <h4 className="text-sm font-medium">{auto.name}</h4>
+                        <p className="text-xs text-muted-foreground mt-0.5">{auto.prompt}</p>
+                        <span className="inline-block mt-2 font-mono text-[10px] bg-muted px-2 py-0.5 rounded text-primary">Cron: {auto.cronSchedule || "0 */12 * * *"}</span>
+                      </div>
+                      <Button
+                        variant="ghost"
+                        size="icon"
+                        className="text-destructive hover:bg-destructive/10"
+                        onClick={() => deleteAutomationMutation.mutate({ id: auto.id })}
+                      >
+                        <Trash2 className="w-4 h-4" />
+                      </Button>
+                    </div>
+                  ))
+                ) : (
+                  <p className="text-xs text-muted-foreground">No active scheduled automations found.</p>
+                )}
+              </div>
+            </div>
+          </ScrollArea>
+        ) : viewMode === "memories" ? (
+          <ScrollArea className="flex-1 p-6">
+            <div className="max-w-3xl mx-auto space-y-6">
+              <div>
+                <h2 className="text-xl font-bold tracking-tight">Long-Term Agent Memory</h2>
+                <p className="text-xs text-muted-foreground mt-1">Persistent semantic memory store for user preferences, code standards, and API endpoints.</p>
+              </div>
+
+              <div className="rounded-2xl border border-border bg-card p-6 shadow-xs space-y-4">
+                <h3 className="text-sm font-semibold">Store New Memory</h3>
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                  <div>
+                    <label className="text-xs font-medium text-muted-foreground">Category</label>
+                    <select
+                      value={memCategory}
+                      onChange={(e) => setMemCategory(e.target.value)}
+                      className="mt-1 w-full rounded-xl border border-border bg-background px-3 py-2 text-xs"
+                    >
+                      <option value="preference">Preference</option>
+                      <option value="coding_style">Coding Style</option>
+                      <option value="endpoint">Endpoint / Config</option>
+                      <option value="goal">Goal</option>
+                    </select>
+                  </div>
+                  <div>
+                    <label className="text-xs font-medium text-muted-foreground">Key / Title</label>
+                    <input
+                      type="text"
+                      value={memKey}
+                      onChange={(e) => setMemKey(e.target.value)}
+                      placeholder="e.g. preferred_language"
+                      className="mt-1 w-full rounded-xl border border-border bg-background px-3 py-2 text-xs"
+                    />
+                  </div>
+                </div>
+                <div>
+                  <label className="text-xs font-medium text-muted-foreground">Memory Value</label>
+                  <textarea
+                    value={memValue}
+                    onChange={(e) => setMemValue(e.target.value)}
+                    placeholder="e.g. TypeScript 5.9, strict null checks, Tailwind 4 styling."
+                    className="mt-1 w-full rounded-xl border border-border bg-background px-3 py-2 text-xs resize-none h-20"
+                  />
+                </div>
+                <Button
+                  onClick={() => {
+                    if (!memKey || !memValue) return;
+                    setMemoryMutation.mutate({ category: memCategory, key: memKey, value: memValue });
+                  }}
+                  disabled={setMemoryMutation.isPending || !memKey || !memValue}
+                  className="rounded-xl text-xs font-medium"
+                >
+                  {setMemoryMutation.isPending ? <Loader2 className="w-4 h-4 animate-spin mr-2" /> : <Database className="w-4 h-4 mr-2 text-primary" />}
+                  Save Memory Item
+                </Button>
+              </div>
+
+              <div className="space-y-3">
+                <h3 className="text-sm font-semibold">Stored Memories ({memoriesQuery.data?.length || 0})</h3>
+                {memoriesQuery.data?.length ? (
+                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                    {memoriesQuery.data.map(m => (
+                      <div key={m.id} className="p-4 rounded-2xl border border-border bg-card shadow-2xs space-y-1">
+                        <div className="flex items-center justify-between">
+                          <span className="font-mono text-[11px] font-semibold text-primary">{m.key}</span>
+                          <Badge variant="outline" className="text-[10px]">{m.category}</Badge>
+                        </div>
+                        <p className="text-xs text-muted-foreground">{m.value}</p>
+                      </div>
+                    ))}
+                  </div>
+                ) : (
+                  <p className="text-xs text-muted-foreground">No memories recorded yet.</p>
+                )}
+              </div>
+            </div>
+          </ScrollArea>
+        ) : viewMode === "settings" ? (
+          <ScrollArea className="flex-1 p-6">
+            <div className="max-w-2xl mx-auto space-y-6">
+              <div>
+                <h2 className="text-xl font-bold tracking-tight">Settings & Telemetry</h2>
+                <p className="text-xs text-muted-foreground mt-1">Configure your 2050 autonomous agent platform parameters.</p>
+              </div>
+              <div className="rounded-2xl border border-border bg-card p-6 shadow-xs space-y-4">
+                <div className="flex items-center justify-between">
+                  <div>
+                    <h3 className="text-sm font-semibold">Manus OAuth Authentication</h3>
+                    <p className="text-xs text-muted-foreground">Authenticated as {user?.email}</p>
+                  </div>
+                  <Badge variant="secondary">Connected</Badge>
+                </div>
+                <div className="pt-4 border-t border-border flex items-center justify-between">
+                  <div>
+                    <h3 className="text-sm font-semibold">GitHub Copilot Integration</h3>
+                    <p className="text-xs text-muted-foreground">Active GITHUB_PAT registered and verified.</p>
+                  </div>
+                  <Badge variant="secondary">Verified</Badge>
+                </div>
+              </div>
+            </div>
+          </ScrollArea>
+        ) : (
+          /* Chat Stream View */
+          <div className="flex-1 flex flex-col min-h-0 relative">
+            <ScrollArea ref={chatScrollRef} className="flex-1 p-4 sm:p-6">
+              {messages.length === 0 ? (
+                <div className="h-full flex flex-col items-center justify-center text-center max-w-lg mx-auto space-y-4 my-20">
+                  <div className="p-4 bg-secondary rounded-2xl text-foreground shadow-sm">
+                    <Sparkles className="w-8 h-8 text-primary" />
+                  </div>
+                  <h2 className="text-xl font-semibold tracking-tight text-foreground">What can I help automate today?</h2>
                   <p className="text-xs text-muted-foreground">
-                    Ask me to write multi-language code (Python, TypeScript, Rust, Go, C++), review GitHub PRs, or browse repositories.
+                    Ask me to run multi-language code generation, browse repositories with Playwright, or schedule 2050 autonomous cron workflows.
                   </p>
                   <div className="grid grid-cols-1 sm:grid-cols-2 gap-2.5 w-full pt-4">
                     <button
-                      onClick={() => setPromptInput("Generate a high-performance async REST server in Rust and Python with automated tests")}
+                      onClick={() => setPromptInput("Generate an async REST server in Rust and Python with automated tests")}
                       className="p-3 rounded-xl border border-border bg-card hover:bg-accent text-left text-xs font-medium transition"
                     >
-                      Generate Rust & Python REST servers →
+                      Generate Rust & Python servers →
                     </button>
                     <button
-                      onClick={() => setPromptInput("Collaborate on Goddy36-A/vela-ai: review structure and add a TypeScript utility")}
+                      onClick={() => setPromptInput("Analyze Goddy36-A/vela-ai and suggest architectural optimizations")}
                       className="p-3 rounded-xl border border-border bg-card hover:bg-accent text-left text-xs font-medium transition"
                     >
-                      Collaborate on GitHub repository vela-ai →
+                      Review GitHub repo vela-ai →
                     </button>
                   </div>
                 </div>
@@ -405,6 +580,65 @@ export default function Home() {
                       )}
                     </div>
                   ))}
+
+                  {/* Active Subtasks Planner Timeline */}
+                  {subtasks.length > 0 && (
+                    <div className="my-6 p-4 rounded-2xl border border-border bg-muted/20 space-y-3">
+                      <div className="flex items-center justify-between">
+                        <span className="text-xs font-semibold text-foreground uppercase tracking-wider">2050 Autonomous Plan</span>
+                        <Badge variant="outline" className="text-[10px]">
+                          {subtasks.filter(s => s.status === 'completed').length} / {subtasks.length} steps completed
+                        </Badge>
+                      </div>
+                      <div className="space-y-2">
+                        {subtasks.map((sub, idx) => (
+                          <div key={sub.id} className="flex items-center gap-3 text-xs p-2.5 rounded-xl border border-border bg-card shadow-2xs">
+                            <span className="w-5 h-5 rounded-full bg-secondary text-secondary-foreground flex items-center justify-center text-[10px] font-semibold flex-shrink-0">
+                              {idx + 1}
+                            </span>
+                            <span className="flex-1 font-medium truncate">{sub.title}</span>
+                            <Badge
+                              variant={sub.status === 'completed' ? 'secondary' : sub.status === 'in_progress' ? 'default' : 'outline'}
+                              className="text-[10px]"
+                            >
+                              {sub.status}
+                            </Badge>
+                          </div>
+                        ))}
+                      </div>
+                    </div>
+                  )}
+
+                  {/* Human-in-the-loop Approvals Widget */}
+                  {approvals.filter(a => a.status === 'pending').length > 0 && (
+                    <div className="my-6 p-4 rounded-2xl border border-amber-500/40 bg-amber-500/10 space-y-3">
+                      <div className="flex items-center gap-2 text-amber-600 dark:text-amber-400 font-semibold text-xs uppercase tracking-wider">
+                        <ShieldCheck className="w-4 h-4" /> Approval Required for High-Risk Action
+                      </div>
+                      {approvals.filter(a => a.status === 'pending').map(app => (
+                        <div key={app.id} className="flex items-center justify-between gap-3 p-3 rounded-xl bg-card border border-border text-xs">
+                          <span>{app.actionDescription}</span>
+                          <div className="flex items-center gap-2">
+                            <Button
+                              size="sm"
+                              className="h-7 text-xs bg-primary text-primary-foreground"
+                              onClick={() => resolveApprovalMutation.mutate({ approvalId: app.id, status: 'approved' })}
+                            >
+                              Approve
+                            </Button>
+                            <Button
+                              size="sm"
+                              variant="outline"
+                              className="h-7 text-xs text-destructive hover:bg-destructive/10"
+                              onClick={() => resolveApprovalMutation.mutate({ approvalId: app.id, status: 'rejected' })}
+                            >
+                              Reject
+                            </Button>
+                          </div>
+                        </div>
+                      ))}
+                    </div>
+                  )}
                 </div>
               )}
             </ScrollArea>
@@ -420,7 +654,7 @@ export default function Home() {
                 >
                   <span className="min-w-0 flex items-center gap-2 text-muted-foreground truncate">
                     <Terminal className="h-3.5 w-3.5 text-primary flex-shrink-0" />
-                    <span className="font-medium text-foreground">Tool execution logs</span>
+                    <span className="font-medium text-foreground">2050 Tool & Copilot Execution Logs</span>
                     <span className="truncate font-mono text-[11px] text-muted-foreground">
                       Latest: [{toolLogs[toolLogs.length - 1]?.toolName}] {toolLogs[toolLogs.length - 1]?.outputResult?.replace(/[#*`]/g, "").slice(0, 70)}...
                     </span>
@@ -460,7 +694,7 @@ export default function Home() {
                         handleCreateTask(e);
                       }
                     }}
-                    placeholder="Message Open Agent Assistant..."
+                    placeholder="Message 2050 Open Agent Assistant (Code generation, Playwright, GitHub, Cron)..."
                     className="w-full bg-transparent px-4 py-3.5 pr-14 text-base md:text-sm focus:outline-hidden resize-none max-h-36 min-h-[52px] leading-6"
                     rows={1}
                     disabled={createTaskMutation.isPending}
@@ -481,7 +715,7 @@ export default function Home() {
                   </div>
                 </div>
                 <div className="text-[11px] text-center text-muted-foreground mt-2">
-                  Open Agent Assistant can make mistakes. Built with Manus OAuth & Playwright automation.
+                  Open Agent Assistant 2050. Multi-language code gen, GitHub Copilot collaboration, and automated cron active.
                 </div>
               </form>
             </div>

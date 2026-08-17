@@ -32,14 +32,12 @@ export const appRouter = router({
           status: "active"
         });
 
-        // Add initial user message
         await db.createMessage({
           taskId,
           role: "user",
           content: input.prompt
         });
 
-        // Trigger agent background execution asynchronously
         runAgentTask(taskId, input.prompt).catch(err => {
           console.error("Background agent execution error:", err);
         });
@@ -61,12 +59,14 @@ export const appRouter = router({
         const subtasks = await db.getSubtasksByTaskId(input.taskId);
         const toolLogs = await db.getToolLogsByTaskId(input.taskId);
         const messages = await db.getMessagesByTaskId(input.taskId);
+        const approvals = await db.getApprovalsByTask(input.taskId);
 
         return {
           task,
           subtasks,
           toolLogs,
-          messages
+          messages,
+          approvals
         };
       }),
 
@@ -91,7 +91,55 @@ export const appRouter = router({
     clearHistory: protectedProcedure.mutation(async ({ ctx }) => {
       await db.deleteAllTasksByUserId(ctx.user.id);
       return { success: true as const };
-    })
+    }),
+
+    // 2050 Automation, Memory, & Approvals Routers
+    listAutomations: protectedProcedure.query(async ({ ctx }) => {
+      return await db.listAutomations(ctx.user.id);
+    }),
+
+    createAutomation: protectedProcedure
+      .input(z.object({ name: z.string().min(1), prompt: z.string().min(1), cronSchedule: z.string().optional() }))
+      .mutation(async ({ ctx, input }) => {
+        const id = await db.createAutomation({
+          userId: ctx.user.id,
+          name: input.name,
+          prompt: input.prompt,
+          cronSchedule: input.cronSchedule || "0 */12 * * *",
+          enabled: 1
+        });
+        return { id };
+      }),
+
+    deleteAutomation: protectedProcedure
+      .input(z.object({ id: z.number() }))
+      .mutation(async ({ ctx, input }) => {
+        await db.deleteAutomation(input.id, ctx.user.id);
+        return { success: true as const };
+      }),
+
+    listMemories: protectedProcedure.query(async ({ ctx }) => {
+      return await db.listMemories(ctx.user.id);
+    }),
+
+    setMemory: protectedProcedure
+      .input(z.object({ category: z.string(), key: z.string(), value: z.string() }))
+      .mutation(async ({ ctx, input }) => {
+        await db.setMemory({
+          userId: ctx.user.id,
+          category: input.category,
+          key: input.key,
+          value: input.value
+        });
+        return { success: true as const };
+      }),
+
+    resolveApproval: protectedProcedure
+      .input(z.object({ approvalId: z.number(), status: z.enum(["approved", "rejected"]) }))
+      .mutation(async ({ ctx, input }) => {
+        await db.updateApprovalStatus(input.approvalId, input.status);
+        return { success: true as const };
+      })
   })
 });
 

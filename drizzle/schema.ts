@@ -66,3 +66,40 @@ export const messages = mysqlTable("messages", {
 
 export type Message = typeof messages.$inferSelect;
 export type InsertMessage = typeof messages.$inferInsert;
+
+export const agentAutomations = mysqlTable("agent_automations", {
+  id: int("id").autoincrement().primaryKey(),
+  userId: int("userId").notNull(),
+  name: varchar("name", { length: 255 }).notNull(),
+  prompt: longtext("prompt").notNull(),
+  cronSchedule: varchar("cronSchedule", { length: 64 }),
+  enabled: int("enabled").default(1).notNull(),
+  lastRunAt: timestamp("lastRunAt"),
+  createdAt: timestamp("createdAt").defaultNow().notNull()
+});
+
+export type AgentAutomation = typeof agentAutomations.$inferSelect;
+export type InsertAgentAutomation = typeof agentAutomations.$inferInsert;
+
+export const agentMemories = mysqlTable("agent_memories", {
+  id: int("id").autoincrement().primaryKey(),
+  userId: int("userId").notNull(),
+  category: varchar("category", { length: 64 }).notNull(),
+  key: varchar("key", { length: 255 }).notNull(),
+  value: longtext("value").notNull(),
+  updatedAt: timestamp("updatedAt").defaultNow().onUpdateNow().notNull()
+});
+
+export type AgentMemory = typeof agentMemories.$inferSelect;
+export type InsertAgentMemory = typeof agentMemories.$inferInsert;
+
+export const agentApprovals = mysqlTable("agent_approvals", {
+  id: int("id").autoincrement().primaryKey(),
+  taskId: int("taskId").notNull(),
+  actionDescription: longtext("actionDescription").notNull(),
+  status: mysqlEnum("status", ["pending", "approved", "rejected"]).default("pending").notNull(),
+  createdAt: timestamp("createdAt").defaultNow().notNull()
+});
+
+export type AgentApproval = typeof agentApprovals.$inferSelect;
+export type InsertAgentApproval = typeof agentApprovals.$inferInsert;

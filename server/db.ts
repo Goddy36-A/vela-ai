@@ -1,4 +1,4 @@
-import { eq, desc } from "drizzle-orm";
+import { eq, desc, and } from "drizzle-orm";
 import { drizzle } from "drizzle-orm/mysql2";
 import { InsertUser, users, tasks, subtasks, toolLogs, messages, Task, Subtask, ToolLog, Message, InsertTask, InsertSubtask, InsertToolLog, InsertMessage } from "../drizzle/schema";
 import { ENV } from './_core/env';
@@ -194,4 +194,56 @@ export async function clearMessagesByTaskId(taskId: number) {
   const db = await getDb();
   if (!db) return;
   await db.delete(messages).where(eq(messages.taskId, taskId));
+}
+
+import { agentAutomations, agentMemories, agentApprovals, type InsertAgentAutomation, type InsertAgentMemory, type InsertAgentApproval } from "../drizzle/schema";
+
+export async function createAutomation(data: InsertAgentAutomation) {
+  const db = await getDb();
+  if (!db) return null;
+  const [res] = await db.insert(agentAutomations).values(data);
+  return res.insertId;
+}
+
+export async function listAutomations(userId: number) {
+  const db = await getDb();
+  if (!db) return [];
+  return db.select().from(agentAutomations).where(eq(agentAutomations.userId, userId));
+}
+
+export async function deleteAutomation(id: number, userId: number) {
+  const db = await getDb();
+  if (!db) return;
+  await db.delete(agentAutomations).where(and(eq(agentAutomations.id, id), eq(agentAutomations.userId, userId)));
+}
+
+export async function setMemory(data: InsertAgentMemory) {
+  const db = await getDb();
+  if (!db) return;
+  await db.insert(agentMemories).values(data).onDuplicateKeyUpdate({ set: { value: data.value } });
+}
+
+export async function listMemories(userId: number) {
+  const db = await getDb();
+  if (!db) return [];
+  return db.select().from(agentMemories).where(eq(agentMemories.userId, userId));
+}
+
+export async function createApproval(data: InsertAgentApproval) {
+  const db = await getDb();
+  if (!db) return null;
+  const [res] = await db.insert(agentApprovals).values(data);
+  return res.insertId;
+}
+
+export async function getApprovalsByTask(taskId: number) {
+  const db = await getDb();
+  if (!db) return [];
+  return db.select().from(agentApprovals).where(eq(agentApprovals.taskId, taskId));
+}
+
+export async function updateApprovalStatus(id: number, status: "approved" | "rejected") {
+  const db = await getDb();
+  if (!db) return;
+  await db.update(agentApprovals).set({ status }).where(eq(agentApprovals.id, id));
 }

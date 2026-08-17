@@ -15,6 +15,13 @@
       "when": 1786967749171,
       "tag": "0001_white_marauders",
       "breakpoints": true
+    },
+    {
+      "idx": 2,
+      "version": "5",
+      "when": 1786974706313,
+      "tag": "0002_famous_la_nuit",
+      "breakpoints": true
     }
   ]
 }
