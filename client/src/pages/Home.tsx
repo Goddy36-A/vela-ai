@@ -7,7 +7,7 @@ import { Input } from "@/components/ui/input";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { ScrollArea } from "@/components/ui/scroll-area";
-import { Loader2, Send, Plus, History, Settings, LogOut, Cpu, Globe, PanelLeftClose, PanelLeft, Sparkles, ChevronDown, CheckCircle2, Terminal } from "lucide-react";
+import { Loader2, Send, Plus, Settings, LogOut, Cpu, Globe, PanelLeftClose, PanelLeft, Sparkles, ChevronDown, ChevronUp, MoreHorizontal, Pencil, Trash2, RotateCcw, Terminal } from "lucide-react";
 import { AssistantMessage } from "@/components/AssistantMessage";
 
 export default function Home() {
@@ -16,6 +16,8 @@ export default function Home() {
   const [viewMode, setViewMode] = useState<"chat" | "settings">("chat");
   const [promptInput, setPromptInput] = useState("");
   const [selectedTaskId, setSelectedTaskId] = useState<number | null>(null);
+  const [logsOpen, setLogsOpen] = useState(false);
+  const [managementTaskId, setManagementTaskId] = useState<number | null>(null);
 
   const utils = trpc.useUtils();
   const tasksQuery = trpc.agent.listTasks.useQuery(undefined, {
@@ -32,6 +34,31 @@ export default function Home() {
     onSuccess: (data) => {
       setSelectedTaskId(data.taskId);
       setPromptInput("");
+      setLogsOpen(false);
+      utils.agent.listTasks.invalidate();
+    }
+  });
+
+  const renameTaskMutation = trpc.agent.renameTask.useMutation({
+    onSuccess: () => {
+      setManagementTaskId(null);
+      utils.agent.listTasks.invalidate();
+      if (selectedTaskId) utils.agent.getTaskDetails.invalidate({ taskId: selectedTaskId });
+    }
+  });
+
+  const deleteTaskMutation = trpc.agent.deleteTask.useMutation({
+    onSuccess: (_data, variables) => {
+      if (selectedTaskId === variables.taskId) setSelectedTaskId(null);
+      setManagementTaskId(null);
+      utils.agent.listTasks.invalidate();
+    }
+  });
+
+  const clearHistoryMutation = trpc.agent.clearHistory.useMutation({
+    onSuccess: () => {
+      setSelectedTaskId(null);
+      setManagementTaskId(null);
       utils.agent.listTasks.invalidate();
     }
   });
@@ -77,6 +104,23 @@ export default function Home() {
     createTaskMutation.mutate({ prompt: promptInput });
   };
 
+  const handleRenameTask = (taskId: number, currentTitle: string) => {
+    const title = window.prompt("Rename chat", currentTitle)?.trim();
+    if (title && title !== currentTitle) renameTaskMutation.mutate({ taskId, title });
+  };
+
+  const handleDeleteTask = (taskId: number) => {
+    if (window.confirm("Delete this chat and its task history? This cannot be undone.")) {
+      deleteTaskMutation.mutate({ taskId });
+    }
+  };
+
+  const handleClearHistory = () => {
+    if (window.confirm("Clear every chat and its task history? This cannot be undone.")) {
+      clearHistoryMutation.mutate();
+    }
+  };
+
   return (
     <div className="min-h-screen flex h-screen bg-background text-foreground overflow-hidden">
       {/* ChatGPT-style collapsible sidebar */}
@@ -112,26 +156,57 @@ export default function Home() {
           <div className="flex-1 overflow-y-auto space-y-1 pr-1">
             <div className="text-[11px] font-medium text-muted-foreground px-3 py-1.5 uppercase tracking-wider">Recent chats</div>
             {tasksQuery.data?.map((t) => (
-              <button
+              <div
                 key={t.id}
-                onClick={() => {
-                  setSelectedTaskId(t.id);
-                  setViewMode("chat");
-                }}
-                className={`w-full text-left px-3 py-2.5 rounded-xl text-xs transition truncate flex items-center justify-between group ${
+                className={`relative group flex items-center gap-1 rounded-xl transition ${
                   selectedTaskId === t.id && viewMode === "chat"
                     ? "bg-accent text-foreground font-medium"
                     : "text-muted-foreground hover:bg-accent/50 hover:text-foreground"
                 }`}
               >
-                <span className="truncate pr-2">{t.title}</span>
-                <span className="text-[10px] text-muted-foreground uppercase opacity-60 flex-shrink-0">{t.phase}</span>
-              </button>
+                <button
+                  onClick={() => {
+                    setSelectedTaskId(t.id);
+                    setViewMode("chat");
+                    setManagementTaskId(null);
+                  }}
+                  className="min-w-0 flex-1 text-left px-3 py-2.5 rounded-xl text-xs truncate"
+                >
+                  <span className="block truncate">{t.title}</span>
+                  <span className="block mt-0.5 text-[10px] text-muted-foreground uppercase opacity-70">{t.phase}</span>
+                </button>
+                <Button
+                  variant="ghost"
+                  size="icon"
+                  className="mr-1 h-8 w-8 flex-shrink-0 rounded-lg opacity-60 hover:opacity-100"
+                  onClick={() => setManagementTaskId(managementTaskId === t.id ? null : t.id)}
+                  aria-label={`Manage ${t.title}`}
+                >
+                  <MoreHorizontal className="h-4 w-4" />
+                </Button>
+                {managementTaskId === t.id && (
+                  <div className="absolute right-1 top-11 z-50 w-36 rounded-xl border border-border bg-popover p-1 shadow-xl">
+                    <button className="flex w-full items-center gap-2 rounded-lg px-2.5 py-2 text-left text-xs hover:bg-accent" onClick={() => handleRenameTask(t.id, t.title)}>
+                      <Pencil className="h-3.5 w-3.5" /> Rename
+                    </button>
+                    <button className="flex w-full items-center gap-2 rounded-lg px-2.5 py-2 text-left text-xs text-destructive hover:bg-destructive/10" onClick={() => handleDeleteTask(t.id)}>
+                      <Trash2 className="h-3.5 w-3.5" /> Delete chat
+                    </button>
+                  </div>
+                )}
+              </div>
             ))}
+            {tasksQuery.data?.length ? (
+              <button onClick={handleClearHistory} className="mt-3 flex w-full items-center gap-2 rounded-xl px-3 py-2 text-xs text-muted-foreground hover:bg-destructive/10 hover:text-destructive">
+                <RotateCcw className="h-3.5 w-3.5" /> Clear all chat history
+              </button>
+            ) : (
+              <div className="px-3 py-4 text-xs text-muted-foreground">No saved chats yet.</div>
+            )}
           </div>
 
           {/* Bottom user profile & settings */}
-          <div className="pt-2 border-t border-border space-y-1">
+          <div className="relative pt-2 border-t border-border space-y-1">
             <Button
               variant="ghost"
               className="w-full justify-start gap-2 text-xs rounded-xl py-2.5 text-muted-foreground hover:text-foreground hover:bg-accent"
@@ -334,20 +409,42 @@ export default function Home() {
               )}
             </ScrollArea>
 
-            {/* Tool Logs Collapsible Drawer / Strip */}
+            {/* Collapsible tool telemetry inspector */}
             {toolLogs.length > 0 && (
-              <div className="border-t border-border bg-muted/20 px-4 py-2 flex items-center justify-between text-xs flex-shrink-0">
-                <div className="flex items-center gap-2 text-muted-foreground truncate">
-                  <Terminal className="w-3.5 h-3.5 text-primary" />
-                  <span className="font-medium text-foreground">Latest Tool Execution:</span>
-                  <span className="truncate font-mono text-[11px] bg-card px-2 py-0.5 rounded border border-border">
-                    [{toolLogs[toolLogs.length - 1]?.toolName}] {toolLogs[toolLogs.length - 1]?.outputResult?.slice(0, 80)}...
+              <section className="border-t border-border bg-muted/20 flex-shrink-0">
+                <button
+                  type="button"
+                  onClick={() => setLogsOpen(open => !open)}
+                  aria-expanded={logsOpen}
+                  className="w-full flex items-center justify-between gap-3 px-4 py-2 text-xs hover:bg-accent/40 transition"
+                >
+                  <span className="min-w-0 flex items-center gap-2 text-muted-foreground truncate">
+                    <Terminal className="h-3.5 w-3.5 text-primary flex-shrink-0" />
+                    <span className="font-medium text-foreground">Tool execution logs</span>
+                    <span className="truncate font-mono text-[11px] text-muted-foreground">
+                      Latest: [{toolLogs[toolLogs.length - 1]?.toolName}] {toolLogs[toolLogs.length - 1]?.outputResult?.replace(/[#*`]/g, "").slice(0, 70)}...
+                    </span>
                   </span>
-                </div>
-                <Badge variant="outline" className="text-[10px]">
-                  {toolLogs.length} tool calls logged
-                </Badge>
-              </div>
+                  <span className="flex items-center gap-2 flex-shrink-0">
+                    <Badge variant="outline" className="text-[10px]">{toolLogs.length} calls</Badge>
+                    {logsOpen ? <ChevronDown className="h-4 w-4" /> : <ChevronUp className="h-4 w-4" />}
+                  </span>
+                </button>
+                {logsOpen && (
+                  <div className="max-h-64 overflow-y-auto border-t border-border px-3 py-2 space-y-2 bg-background/70">
+                    {toolLogs.map(log => (
+                      <div key={log.id} className="rounded-xl border border-border bg-card px-3 py-2 text-xs">
+                        <div className="flex items-center justify-between gap-2 mb-1">
+                          <span className="font-mono text-[11px] font-semibold text-primary">{log.toolName}</span>
+                          <Badge variant={log.status === "success" ? "secondary" : "destructive"} className="text-[10px]">{log.status}</Badge>
+                        </div>
+                        {log.inputArgs && <div className="text-[11px] text-muted-foreground break-all mb-1"><span className="font-medium text-foreground">Input:</span> {log.inputArgs}</div>}
+                        {log.outputResult && <div className="assistant-markdown text-[12px]"><AssistantMessage content={log.outputResult} /></div>}
+                      </div>
+                    ))}
+                  </div>
+                )}
+              </section>
             )}
 
             {/* ChatGPT-style Floating Composer Bar */}

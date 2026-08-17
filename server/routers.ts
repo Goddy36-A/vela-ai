@@ -68,7 +68,30 @@ export const appRouter = router({
           toolLogs,
           messages
         };
-      })
+      }),
+
+    renameTask: protectedProcedure
+      .input(z.object({ taskId: z.number(), title: z.string().trim().min(1).max(255) }))
+      .mutation(async ({ ctx, input }) => {
+        const task = await db.getTaskById(input.taskId);
+        if (!task || task.userId !== ctx.user.id) throw new Error("Task not found or unauthorized");
+        await db.renameTask(input.taskId, input.title);
+        return { success: true as const };
+      }),
+
+    deleteTask: protectedProcedure
+      .input(z.object({ taskId: z.number() }))
+      .mutation(async ({ ctx, input }) => {
+        const task = await db.getTaskById(input.taskId);
+        if (!task || task.userId !== ctx.user.id) throw new Error("Task not found or unauthorized");
+        await db.deleteTaskById(input.taskId);
+        return { success: true as const };
+      }),
+
+    clearHistory: protectedProcedure.mutation(async ({ ctx }) => {
+      await db.deleteAllTasksByUserId(ctx.user.id);
+      return { success: true as const };
+    })
   })
 });
 

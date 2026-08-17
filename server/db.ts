@@ -167,3 +167,31 @@ export async function getMessagesByTaskId(taskId: number): Promise<Message[]> {
   if (!db) return [];
   return await db.select().from(messages).where(eq(messages.taskId, taskId)).orderBy(messages.createdAt);
 }
+
+export async function renameTask(id: number, title: string) {
+  const db = await getDb();
+  if (!db) return;
+  await db.update(tasks).set({ title, updatedAt: new Date() }).where(eq(tasks.id, id));
+}
+
+export async function deleteTaskById(id: number) {
+  const db = await getDb();
+  if (!db) return;
+  await db.delete(messages).where(eq(messages.taskId, id));
+  await db.delete(subtasks).where(eq(subtasks.taskId, id));
+  await db.delete(toolLogs).where(eq(toolLogs.taskId, id));
+  await db.delete(tasks).where(eq(tasks.id, id));
+}
+
+export async function deleteAllTasksByUserId(userId: number) {
+  const ownedTasks = await getTasksByUserId(userId);
+  for (const task of ownedTasks) {
+    await deleteTaskById(task.id);
+  }
+}
+
+export async function clearMessagesByTaskId(taskId: number) {
+  const db = await getDb();
+  if (!db) return;
+  await db.delete(messages).where(eq(messages.taskId, taskId));
+}
