@@ -1,6 +1,7 @@
 import { invokeLLM } from "./_core/llm";
 import * as db from "./db";
 import { browseUrl } from "./browserTool";
+import { extractAndNormalizeLLMText, formatToolResult } from "./llmText";
 
 export const AVAILABLE_TOOLS = [
   {
@@ -78,7 +79,7 @@ Return ONLY a valid JSON array of strings representing the subtask titles, e.g. 
       messages: [{ role: "user", content: planPrompt }]
     });
 
-    const planResText = typeof planResRaw === "string" ? planResRaw : JSON.stringify(planResRaw);
+    const planResText = extractAndNormalizeLLMText(planResRaw);
 
     let subtaskTitles = [
       "Analyze technical scope and identify target URLs",
@@ -146,7 +147,7 @@ Return ONLY a valid JSON array of strings representing the subtask titles, e.g. 
       const toolOutput = await executeToolCall(toolName, toolArgs);
 
       await db.updateToolLog(logId, toolOutput, "success");
-      await db.updateSubtaskStatus(sub.id, "completed", toolOutput);
+      await db.updateSubtaskStatus(sub.id, "completed", formatToolResult(toolName, toolOutput));
     }
 
     // Phase 3: Reviewing
@@ -160,7 +161,7 @@ We have successfully executed all subtasks, including live browser navigation. N
       messages: [{ role: "user", content: synthesisPrompt }]
     });
 
-    const synthesisResText = typeof synthesisResRaw === "string" ? synthesisResRaw : JSON.stringify(synthesisResRaw);
+    const synthesisResText = extractAndNormalizeLLMText(synthesisResRaw);
     const finalSummary = synthesisResText || "Task completed successfully with Playwright browser verification.";
 
     await db.createMessage({ taskId, role: "assistant", content: finalSummary });

@@ -8,6 +8,9 @@
 - [x] Implement multi-step task planner widget and live tool execution log viewer
 - [x] Add vitest unit tests for agent execution and tRPC procedures
 - [x] Install Playwright and configure browser automation helper
-- [x] Add browser_navigate and browser_extract tools to the agent runtime
 - [x] Redesign UI into a real ChatGPT-clone workspace (sans-serif fonts, collapsible sidebar, centered chat stream, floating composer, model selector, tool log drawer)
+- [x] Implement responsive mobile drawer / overlay for chat history and settings
+- [x] Normalize assistant output to clean markdown text, removing raw JSON/tool artifact leakage
+- [x] Enhance Markdown typography and code blocks with syntax styling and copy convenience
+- [x] Run type checks and verify responsive layout across viewports
 - [x] Save checkpoint and verify deployment readiness

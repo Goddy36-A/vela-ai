@@ -8,11 +8,11 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { ScrollArea } from "@/components/ui/scroll-area";
 import { Loader2, Send, Plus, History, Settings, LogOut, Cpu, Globe, PanelLeftClose, PanelLeft, Sparkles, ChevronDown, CheckCircle2, Terminal } from "lucide-react";
-import { Streamdown } from "streamdown";
+import { AssistantMessage } from "@/components/AssistantMessage";
 
 export default function Home() {
   const { user, isAuthenticated, logout } = useAuth();
-  const [sidebarOpen, setSidebarOpen] = useState(true);
+  const [sidebarOpen, setSidebarOpen] = useState(() => typeof window === "undefined" ? true : window.innerWidth >= 768);
   const [viewMode, setViewMode] = useState<"chat" | "settings">("chat");
   const [promptInput, setPromptInput] = useState("");
   const [selectedTaskId, setSelectedTaskId] = useState<number | null>(null);
@@ -81,9 +81,7 @@ export default function Home() {
     <div className="min-h-screen flex h-screen bg-background text-foreground overflow-hidden">
       {/* ChatGPT-style collapsible sidebar */}
       <aside
-        className={`${
-          sidebarOpen ? "w-64" : "w-0 -ml-64"
-        } transition-all duration-300 ease-in-out bg-muted/50 border-r border-border flex flex-col justify-between z-20 flex-shrink-0`}
+        className={`${sidebarOpen ? "translate-x-0 md:translate-x-0" : "-translate-x-full md:-ml-64 md:translate-x-0"} fixed inset-y-0 left-0 z-40 w-72 md:relative md:inset-auto md:z-20 md:w-64 transition-transform md:transition-[transform,margin] duration-300 ease-out bg-muted/50 border-r border-border flex flex-col justify-between flex-shrink-0`}
       >
         <div className="p-3 flex flex-col h-full space-y-3 overflow-hidden">
           {/* New Chat & Close Sidebar */}
@@ -155,10 +153,13 @@ export default function Home() {
         </div>
       </aside>
 
+      {/* Mobile scrim keeps the conversation context visible while the history drawer is open. */}
+      {sidebarOpen && <button aria-label="Close conversation sidebar" className="fixed inset-0 z-30 bg-black/25 backdrop-blur-[1px] md:hidden" onClick={() => setSidebarOpen(false)} />}
+
       {/* Main ChatGPT Workspace */}
-      <main className="flex-1 flex flex-col h-full overflow-hidden bg-background relative">
+      <main className="flex-1 min-w-0 min-h-0 flex flex-col h-full overflow-hidden bg-background relative">
         {/* Top Header bar */}
-        <header className="h-14 border-b border-border px-4 flex items-center justify-between bg-background/80 backdrop-blur z-10">
+        <header className="h-14 min-h-14 border-b border-border px-3 sm:px-4 flex items-center justify-between gap-2 bg-background/80 backdrop-blur z-10">
           <div className="flex items-center gap-3">
             {!sidebarOpen && (
               <Button
@@ -173,14 +174,14 @@ export default function Home() {
             )}
             {/* Model Selector dropdown style */}
             <div className="flex items-center gap-1.5 text-sm font-semibold text-foreground px-3 py-1.5 rounded-xl hover:bg-accent/50 cursor-pointer transition">
-              <span>Open Agent Assistant</span>
-              <Badge variant="secondary" className="text-[10px] font-normal px-1.5 py-0.5 rounded-md ml-1">GPT-4o + Playwright</Badge>
+              <span className="truncate max-w-[150px] sm:max-w-none">Open Agent Assistant</span>
+              <Badge variant="secondary" className="hidden sm:inline-flex text-[10px] font-normal px-1.5 py-0.5 rounded-md ml-1">GPT-4o + Playwright</Badge>
               <ChevronDown className="w-3.5 h-3.5 text-muted-foreground ml-0.5" />
             </div>
           </div>
 
           {/* Agent Phase Badges indicator */}
-          <div className="flex items-center gap-1.5">
+          <div className="flex items-center gap-1.5 max-w-[60vw] overflow-x-auto whitespace-nowrap scrollbar-none">
             <span className="text-xs text-muted-foreground hidden sm:inline">Phase:</span>
             {(["planning", "executing", "reviewing", "done"] as const).map((p) => {
               const active = currentTask?.phase === p;
@@ -188,7 +189,7 @@ export default function Home() {
                 <Badge
                   key={p}
                   variant={active ? "default" : "outline"}
-                  className={`text-[10px] uppercase tracking-wide px-2 py-0.5 rounded-md ${
+                  className={`${!active ? "hidden sm:inline-flex" : "inline-flex"} text-[10px] uppercase tracking-wide px-2 py-0.5 rounded-md ${
                     active 
                       ? "bg-primary text-primary-foreground font-semibold shadow-xs animate-pulse" 
                       : "text-muted-foreground border-border bg-transparent"
@@ -274,7 +275,7 @@ export default function Home() {
             )}
 
             {/* Chat Messages Area (ChatGPT style centered stream) */}
-            <ScrollArea className="flex-1 px-4 py-6">
+            <ScrollArea className="flex-1 min-h-0 px-3 py-4 sm:px-4 sm:py-6">
               {messages.length === 0 ? (
                 <div className="h-full flex flex-col items-center justify-center text-center space-y-4 max-w-lg mx-auto py-24">
                   <div className="p-4 bg-secondary rounded-2xl text-foreground shadow-sm">
@@ -319,7 +320,7 @@ export default function Home() {
                         }`}
                       >
                         <div className="prose dark:prose-invert text-sm max-w-none leading-relaxed">
-                          <Streamdown>{msg.content}</Streamdown>
+                          <AssistantMessage content={msg.content} />
                         </div>
                       </div>
                       {msg.role === "user" && (
@@ -350,7 +351,7 @@ export default function Home() {
             )}
 
             {/* ChatGPT-style Floating Composer Bar */}
-            <div className="p-4 bg-background border-t border-border flex-shrink-0">
+            <div className="p-3 sm:p-4 pb-[calc(0.75rem+env(safe-area-inset-bottom))] sm:pb-4 bg-background border-t border-border flex-shrink-0">
               <form onSubmit={handleCreateTask} className="max-w-3xl mx-auto relative">
                 <div className="relative flex items-center bg-card border border-border rounded-2xl shadow-sm focus-within:ring-2 focus-within:ring-ring focus-within:border-transparent transition">
                   <textarea
@@ -363,7 +364,7 @@ export default function Home() {
                       }
                     }}
                     placeholder="Message Open Agent Assistant..."
-                    className="w-full bg-transparent px-4 py-3.5 pr-14 text-sm focus:outline-hidden resize-none max-h-32 min-h-[52px]"
+                    className="w-full bg-transparent px-4 py-3.5 pr-14 text-base md:text-sm focus:outline-hidden resize-none max-h-36 min-h-[52px] leading-6"
                     rows={1}
                     disabled={createTaskMutation.isPending}
                   />
