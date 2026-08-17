@@ -12,8 +12,5 @@
 - [x] Implement collapsible tool-log inspector drawer and live step telemetry
 - [x] Add chat management controls (rename, clear history, delete chat session)
 - [x] Securely request GitHub PAT and validate via Vitest
+- [x] Create public GitHub repository Goddy36-A/vela-ai and push current project code
 - [x] Save checkpoint and verify deployment readiness
-
-- [ ] Create public GitHub repository Goddy36-A/vela-ai via GitHub API / gh CLI
-- [ ] Configure git remote with authenticated GITHUB_PAT
-- [ ] Push local project branch to origin/main and verify success
