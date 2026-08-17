@@ -8,4 +8,6 @@
 - [x] Build sidebar with task history, new task creation, and settings
 - [x] Implement multi-step task planner widget and live tool execution log viewer
 - [x] Add vitest unit tests for agent execution and tRPC procedures
+- [x] Audit server runtime and background task execution reliability
+- [x] Upgrade dashboard UI with professional telemetry widgets, metrics counters, and robust error boundaries
 - [x] Save checkpoint and verify deployment readiness
