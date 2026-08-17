@@ -19,3 +19,5 @@ services:
         sync: false
       - key: BUILT_IN_FORGE_API_URL
         value: https://api.manus.im
+      - key: OAUTH_SERVER_URL
+        value: https://api.manus.im
