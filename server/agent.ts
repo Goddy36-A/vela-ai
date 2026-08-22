@@ -115,6 +115,7 @@ User Request: ${prompt}
 Return ONLY a valid JSON array of strings representing the subtask titles, e.g. ["Analyze codebase and requirements", "Generate multi-language code implementation", "Synthesize executive review and GitHub integration"]. No markdown formatting, just raw JSON array.`;
 
     const planResRaw = await invokeLLM({
+      model: "gpt-4o-mini",
       messages: [{ role: "user", content: planPrompt }]
     });
 
@@ -182,10 +183,11 @@ Return ONLY a valid JSON array of strings representing the subtask titles, e.g. 
     await db.updateTaskPhase(taskId, "reviewing");
     await db.createMessage({ taskId, role: "system", content: "Synthesizing multi-language code generation and GitHub Copilot suggestions." });
 
-    const synthesisPrompt = `You are Manus, an autonomous AI Copilot and universal multi-language code generation expert. The user requested: "${prompt}".
+    const synthesisPrompt = `You are Vela AI, an autonomous enterprise agent and universal multi-language code generation expert. The user requested: "${prompt}".
 Provide a complete, production-grade, highly polished technical solution with robust multi-language code blocks (Python, TypeScript, Rust, Go, C++, etc.), architectural explanations, and GitHub collaboration workflow guidance.`;
 
     const synthesisResRaw = await invokeLLM({
+      model: "gpt-4o-mini",
       messages: [{ role: "user", content: synthesisPrompt }]
     });
 
