@@ -140,3 +140,28 @@ body {
 ::-webkit-scrollbar-track { background: transparent; }
 ::-webkit-scrollbar-thumb { background: hsl(var(--border)); border-radius: 99px; }
 ::-webkit-scrollbar-thumb:hover { background: hsl(var(--muted-foreground)); }
+
+/* ── Mobile viewport fix ────────────────────────────────────────────── */
+/* 100svh = small viewport height — always excludes mobile browser chrome */
+html, body {
+  /* Fallback for browsers without svh support */
+  height: 100%;
+}
+#root {
+  height: 100%;
+  height: 100svh; /* progressive enhancement */
+  display: flex;
+  flex-direction: column;
+}
+
+/* Prevent touch callouts / text selection on UI chrome */
+button, [role="button"] {
+  -webkit-tap-highlight-color: transparent;
+  touch-action: manipulation;
+}
+
+/* Prevent iOS bounce scroll on the body — inner elements scroll instead */
+body {
+  overscroll-behavior: none;
+  overflow: hidden;
+}
