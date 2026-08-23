@@ -23,7 +23,15 @@ export function getLLMConfig(): LLMConfig | null {
     return { url: `${ENV.forgeApiUrl.replace(/\/$/, "")}/v1/chat/completions`, key: ENV.forgeApiKey, defaultModel: "claude-3-sonnet", provider: "forge" };
   }
   if (ENV.geminiApiKey) {
-    return { url: "https://generativelanguage.googleapis.com/v1beta/openai/chat/completions", key: ENV.geminiApiKey, defaultModel: "gemini-2.0-flash", provider: "gemini" };
+    return {
+      url: "https://generativelanguage.googleapis.com/v1beta/openai/chat/completions",
+      key: ENV.geminiApiKey,
+      // gemini-3.1-pro-preview-customtools is optimised for agentic pipelines
+      // that use custom tools (exactly what Vela AI does).
+      // Override via GEMINI_MODEL env var, e.g. gemini-3.5-flash for free tier.
+      defaultModel: ENV.geminiModel,
+      provider: "gemini",
+    };
   }
   if (ENV.groqApiKey) {
     return { url: "https://api.groq.com/openai/v1/chat/completions", key: ENV.groqApiKey, defaultModel: "llama-3.3-70b-versatile", provider: "groq" };

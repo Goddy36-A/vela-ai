@@ -10,6 +10,7 @@ export const ENV = {
   forgeApiUrl:      process.env.BUILT_IN_FORGE_API_URL   ?? "",
   forgeApiKey:      process.env.BUILT_IN_FORGE_API_KEY   ?? "",
   geminiApiKey:     process.env.GEMINI_API_KEY            ?? "",   // aistudio.google.com — FREE
+  geminiModel:      process.env.GEMINI_MODEL              ?? "gemini-3.1-pro-preview-customtools", // override if needed
   groqApiKey:       process.env.GROQ_API_KEY              ?? "",   // console.groq.com    — FREE
   openRouterApiKey: process.env.OPENROUTER_API_KEY        ?? "",   // openrouter.ai       — FREE models
   openAIApiKey:     process.env.OPENAI_API_KEY            ?? "",   // platform.openai.com — paid
